@@ -1,21 +1,50 @@
-require("dotenv").config();
 const express = require("express");
-const { connectDB } = require("./config/db");
+const router = express.Router();
+const mongoose = require("mongoose");
 
-const ingest = require("./routes/ingest");
-const readings = require("./routes/readings");
+// Accedemos directamente a la colección readings
+const getCollection = () =>
+  mongoose.connection.collection("readings");
 
-(async ()=>{
-  await connectDB(process.env.MONGODB_URI);
+/**
+ * GET /api/readings
+ * Opcional: ?deviceId=XXX&limit=100
+ */
+router.get("/readings", async (req, res) => {
+  try {
+    const { deviceId, limit = 50 } = req.query;
 
-  const app = express();
-  app.use(express.json());
+    const query = deviceId ? { deviceId } : {};
 
-  app.get("/health", (_,res)=>res.json({ ok:true }));
+    const readings = await getCollection()
+      .find(query)
+      .sort({ ts: -1 })
+      .limit(Number(limit))
+      .toArray();
 
-  // Rutas API
-  app.use("/api", ingest);    // POST /api/ingest
-  app.use("/api", readings);  // GET  /api/readings, /api/readings/latest
+    res.json(readings);
+  } catch (err) {
+    console.error("Error reading data:", err);
+    res.status(500).json({ error: "Failed to read readings" });
+  }
+});
 
-  app.listen(3000, ()=>console.log("API running on port 3000"));
-})();
+/**
+ * GET /api/readings/latest
+ */
+router.get("/readings/latest", async (_, res) => {
+  try {
+    const latest = await getCollection()
+      .find({})
+      .sort({ ts: -1 })
+      .limit(1)
+      .toArray();
+
+    res.json(latest[0] || null);
+  } catch (err) {
+    console.error("Error reading latest:", err);
+    res.status(500).json({ error: "Failed to read latest reading" });
+  }
+});
+
+module.exports = router;
