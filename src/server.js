@@ -4,6 +4,13 @@ const { connectDB } = require("./config/db");
 
 const ingest = require("./routes/ingest");
 const readings = require("./routes/readings");
+const cors = require("cors");
+
+app.use(cors({
+  origin: "*",               // para desarrollo / demo
+  methods: ["GET","POST"],
+  allowedHeaders: ["Content-Type","Authorization","x-device-id","x-api-key"]
+}));
 
 const app = express();
 app.use(express.json());
