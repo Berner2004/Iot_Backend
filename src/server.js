@@ -5,26 +5,22 @@ const { connectDB } = require("./config/db");
 const ingest = require("./routes/ingest");
 const readings = require("./routes/readings");
 
-(async ()=>{
-  try {
-    await connectDB(process.env.MONGODB_URI);
+const app = express();
+app.use(express.json());
 
-    const app = express();
-    app.use(express.json());
+app.get("/health", (_, res) => res.json({ ok: true }));
 
-    app.get("/health", (_,res)=>res.json({ ok:true }));
+app.use("/api", ingest);
+app.use("/api", readings);
 
-    app.use("/api", ingest);     // POST /api/ingest
-    app.use("/api", readings);   // GET /api/readings, /api/readings/latest
+const PORT = process.env.PORT || 3000;
 
-    const PORT = process.env.PORT || 3000;
+// 🔥 Render necesita que el puerto se abra INMEDIATO
+app.listen(PORT, () => {
+  console.log(`API running on port ${PORT}`);
+});
 
-    app.listen(PORT, () => {
-      console.log(`API running on port ${PORT}`);
-    });
-
-  } catch (err) {
-    console.error("Fatal startup error:", err);
-    process.exit(1);
-  }
-})();
+// Mongo en segundo plano (NO bloquea Render)
+connectDB(process.env.MONGODB_URI).catch(err => {
+  console.error("MongoDB failed but server is running:", err.message);
+});
